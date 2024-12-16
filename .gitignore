@@ -3,7 +3,7 @@
 #
 # Binaries for programs and plugins
 
-*.pro.ymal
+*.pro.yaml
 
 *.exe
 *.exe~
