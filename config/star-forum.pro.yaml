@@ -1,7 +1,0 @@
-mysql:
-  host: localhost
-  username: test
-  password: test
-  port: 3306
-  charset: utf8
-  dbName: test

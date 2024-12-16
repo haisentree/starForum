@@ -1,7 +1,0 @@
-mysql:
-  host: 43.139.232.236
-  username: root
-  password: haisen@8848Phone
-  port: 3306
-  charset: utf8
-  dbName: test1
