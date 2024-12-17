@@ -2,15 +2,18 @@ package server
 
 import (
 	"fmt"
+	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"starForum/internal/global"
+	"starForum/internal/models"
 )
 
 func init() {
 	initConfig()
 	initDB()
+	initValidate()
 }
 
 func initConfig() {
@@ -38,5 +41,11 @@ func initDB() {
 	if err != nil {
 		panic("failed to connect database")
 	}
+	db.AutoMigrate(models.Models...)
 	global.MysqlDB = db
+}
+
+func initValidate() {
+	v := validator.New()
+	global.Validate = v
 }

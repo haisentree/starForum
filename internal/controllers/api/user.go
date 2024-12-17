@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/kataras/iris/v12"
+	msg "starForum/internal/global/message"
 )
 
 type UserController struct {
@@ -9,8 +10,12 @@ type UserController struct {
 }
 
 func (c *UserController) GetCurrent() {
-	c.Ctx.JSON(iris.Map{"status": iris.StatusOK,
-		"message": "hello",
-		"data":    "go",
-	})
+	resp := msg.NewCommonResponse("current")
+
+	c.Ctx.JSON(resp.JsonCommonResponse())
+}
+
+func (c *UserController) GetLast() {
+	resp := msg.NewCommonResponse("last")
+	c.Ctx.JSON(resp.JsonCommonResponse())
 }

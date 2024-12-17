@@ -1,11 +1,9 @@
 package server
 
 import (
-	"github.com/kataras/iris/v12/mvc"
-	"starForum/internal/controllers"
-	"starForum/internal/controllers/api"
-
 	"github.com/kataras/iris/v12"
+	"github.com/kataras/iris/v12/mvc"
+	"starForum/internal/controllers/api"
 )
 
 type StarForumServer struct {
@@ -28,18 +26,10 @@ func (s *StarForumServer) Start() {
 }
 
 func (s *StarForumServer) createRouters() {
-	booksAPI := s.server.Party("/books")
-	{
-		booksAPI.Use(iris.Compression)
-
-		// GET: http://localhost:8080/books
-		booksAPI.Get("/", controllers.List)
-		// POST: http://localhost:8080/books
-		booksAPI.Post("/", controllers.Create)
-	}
-
 	mvc.Configure(s.server.Party("/api"), func(m *mvc.Application) {
 		m.Party("/user").Handle(new(api.UserController))
+		m.Party("/login").Handle(new(api.LoginController))
+		m.Party("/captcha").Handle(new(api.CaptchaController))
 	})
 
 }
