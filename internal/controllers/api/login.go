@@ -15,7 +15,7 @@ type LoginController struct {
 // 注册
 func (c *LoginController) PostSignup() {
 	resp := msg.NewCommonResponse(nil)
-
+	// 1.校验表单
 	req := form.SignupMsgReq{}
 	c.Ctx.ReadJSON(&req)
 	if err := global.Validate.Struct(req); err != nil {
@@ -24,7 +24,7 @@ func (c *LoginController) PostSignup() {
 		c.Ctx.JSON(resp.JsonCommonResponse())
 		return
 	}
-
+	// 2.执行逻辑函数
 	dealInfo := services.CreateUser(req)
 	if dealInfo.Error != global.DealInfoSuccess {
 		resp.Status = -1

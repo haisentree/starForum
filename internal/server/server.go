@@ -31,5 +31,4 @@ func (s *StarForumServer) createRouters() {
 		m.Party("/login").Handle(new(api.LoginController))
 		m.Party("/captcha").Handle(new(api.CaptchaController))
 	})
-
 }
