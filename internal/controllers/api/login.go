@@ -16,7 +16,7 @@ type LoginController struct {
 func (c *LoginController) PostSignup() {
 	resp := msg.NewCommonResponse(nil)
 	// 1.校验表单
-	req := form.SignupMsgReq{}
+	req := form.LoginMsgReq{}
 	c.Ctx.ReadJSON(&req)
 	if err := global.Validate.Struct(req); err != nil {
 		resp.Status = -1

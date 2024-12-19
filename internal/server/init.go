@@ -3,17 +3,24 @@ package server
 import (
 	"fmt"
 	"github.com/go-playground/validator/v10"
+	"github.com/mojocn/base64Captcha"
+	"github.com/patrickmn/go-cache"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 	"starForum/internal/global"
+	"starForum/internal/global/config"
 	"starForum/internal/models"
+	"time"
 )
 
 func init() {
 	initConfig()
 	initDB()
 	initValidate()
+	initCache()
+	initCaptcha()
 }
 
 func initConfig() {
@@ -21,11 +28,12 @@ func initConfig() {
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("./config")
 	viper.ReadInConfig()
-	var config global.Config
+	var config config.Config
 	if err := viper.Unmarshal(&config); err != nil {
 		panic(fmt.Sprintf("unable to decode config, %v", err))
 	}
 	global.ConfigMysql = config.Mysql
+	global.ConfigCache = config.Cache
 }
 
 func initDB() {
@@ -37,7 +45,12 @@ func initDB() {
 		global.ConfigMysql.DBName,
 		global.ConfigMysql.Charset,
 	)
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{
+			TablePrefix:   "t_",
+			SingularTable: true, // 单数形式User{}，创建t_user
+		},
+	})
 	if err != nil {
 		panic("failed to connect database")
 	}
@@ -48,4 +61,22 @@ func initDB() {
 func initValidate() {
 	v := validator.New()
 	global.Validate = v
+}
+
+func initCache() {
+	expireTime := time.Duration(global.ConfigCache.CacheTime)
+	cleanTime := time.Duration(global.ConfigCache.CleanTime)
+	c := cache.New(expireTime*time.Minute, cleanTime*time.Minute)
+	global.Cache = c
+}
+
+func initCaptcha() {
+	digitDriver := base64Captcha.DriverDigit{
+		Height:   50,
+		Width:    200,
+		Length:   4,   //验证码长度
+		MaxSkew:  0.7, //倾斜
+		DotCount: 1,   //背景的点数，越大，字体越模糊
+	}
+	global.CaptchaGenerate = base64Captcha.NewCaptcha(&digitDriver, global.CaptchaStore)
 }
