@@ -1,9 +1,15 @@
 package config
 
 type Config struct {
-	Mysql Mysql
-	Cache Cache
-	Email Email
+	Mysql  Mysql
+	Cache  Cache
+	Email  Email
+	Server Server
+}
+
+// debug模式下，验证码随机都成功
+type Server struct {
+	Debug bool
 }
 
 type Mysql struct {

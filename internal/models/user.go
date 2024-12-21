@@ -1,9 +1,9 @@
 package models
 
 import (
+	"fmt"
 	"gorm.io/gorm"
 	"starForum/internal/global"
-	"starForum/internal/global/form"
 	"starForum/internal/global/message"
 )
 
@@ -23,7 +23,7 @@ func (m *User) TableName() string {
 	return "user"
 }
 
-func CreateUser2(data *User) *message.CommonResponse {
+func CreateUser(data *User) *message.CommonResponse {
 	resp := message.NewCommonResponse()
 	result := global.MysqlDB.Create(data)
 	if result.Error != nil {
@@ -36,9 +36,26 @@ func CreateUser2(data *User) *message.CommonResponse {
 
 func (m *User) FindUserByEmail(email string) *message.CommonResponse {
 	respModel := message.NewCommonResponse()
-	user := &User{
-		Email: email,
+	user := NewUser()
+	user.Username = email
+
+	fmt.Println("model:", email)
+
+	result := global.MysqlDB.First(&user)
+	if result.RowsAffected == 0 {
+		respModel.Status = message.ModelFindNone
+		respModel.Message = "数据不存在数据库中"
+		return respModel
 	}
+
+	fmt.Println("result:", result.RowsAffected)
+	respModel.Data = user
+	return respModel
+}
+func (m *User) FindUserByID(userId uint) *message.CommonResponse {
+	respModel := message.NewCommonResponse()
+	user := NewUser()
+	user.ID = userId
 	result := global.MysqlDB.First(&user)
 	if result.RowsAffected == 0 {
 		respModel.Status = message.ModelFindNone
@@ -47,23 +64,4 @@ func (m *User) FindUserByEmail(email string) *message.CommonResponse {
 	}
 	respModel.Data = user
 	return respModel
-}
-
-func (m *User) CreateUser(data interface{}) message.CommonDealInfo {
-	dealInfo := message.NewCommonDealInfo(nil)
-
-	d := data.(form.LoginMsgReq)
-	m.Username = d.Username
-	m.Email = d.Email
-	m.Password = d.Password
-	m.Nickname = d.Nickname
-	m.Avatar = d.Avatar
-
-	result := global.MysqlDB.Create(m)
-	if result.Error != nil {
-		dealInfo.Error = global.DealModelFail
-		dealInfo.Message = result.Error.Error()
-		return dealInfo
-	}
-	return dealInfo
 }

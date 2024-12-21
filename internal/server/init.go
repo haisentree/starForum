@@ -37,6 +37,7 @@ func initConfig() {
 	global.ConfigMysql = config.Mysql
 	global.ConfigCache = config.Cache
 	global.ConfigEmail = config.Email
+	global.ConfigServer = config.Server
 }
 
 func initDB() {

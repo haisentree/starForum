@@ -20,9 +20,10 @@ var (
 )
 
 var (
-	ConfigMysql config.Mysql
-	ConfigCache config.Cache
-	ConfigEmail config.Email
+	ConfigServer config.Server
+	ConfigMysql  config.Mysql
+	ConfigCache  config.Cache
+	ConfigEmail  config.Email
 )
 
 const (

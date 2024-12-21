@@ -28,14 +28,28 @@ func (u *userService) SigupInfoDeal(data interface{}) *message.CommonResponse {
 	resp := message.NewCommonResponse()
 	// 校验验证码
 	d := data.(form.SignupInfoMsgReq)
-	if global.CaptchaStore.Verify(d.CaptchaId, d.CaptchaAnswer, true) == false {
-		resp.Status = message.ServiceError
-		resp.Message = "验证码校验错误"
-		return resp
+	// 跳过验证码debug
+	if global.ConfigServer.Debug != true {
+		if global.CaptchaStore.Verify(d.CaptchaId, d.CaptchaAnswer, true) == false {
+
+			resp.Status = message.ServiceError
+			resp.Message = "验证码校验错误"
+			return resp
+		}
 	}
+
 	d.Password = password.EncodePassword(d.Password)
 	// 判断邮件地址是否被注册过
+	userModel := models.NewUser()
+	fmt.Println("service:", d.Email)
+	respModel := userModel.FindUserByEmail(d.Email)
+	//fmt.Println("data:", respModel.Data)
+	if respModel.Data != nil {
+		resp.Status = message.ServiceError
+		resp.Message = "注册失败，该邮件已经被注册"
+		return resp
 
+	}
 	// 发送验证码
 	randCode := fmt.Sprintf("%06v", rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(1000000))
 	global.EmailSender.SendSampleCode(randCode, d.Email)
@@ -73,7 +87,7 @@ func (u *userService) SignupEmailVerify(data interface{}) *message.CommonRespons
 	userModel.Nickname = userSigupCache.Nickname
 	userModel.Avatar = userSigupCache.Avatar
 
-	respModel := models.CreateUser2(userModel)
+	respModel := models.CreateUser(userModel)
 	if respModel.Status != message.SuccessStatus {
 		resp.Status = message.ModelError
 		resp.Message = "创建用户失败"
@@ -114,6 +128,38 @@ func (u *userService) UserLogin(data interface{}) *message.CommonResponse {
 	return resp
 }
 
+func (u *userService) GetCurrentUserByToken(data interface{}) *message.CommonResponse {
+	resp := message.NewCommonResponse()
+	d := data.(string)
+	// 1.从缓存中查找token(暂时不写2，缓存过期时间，即使登录失效时间)
+	myCacheUserID, ok := global.Cache.Get(d)
+	if ok == false {
+		resp.Status = message.ServiceError
+		resp.Message = "token不存在，用户未登录"
+		return resp
+	}
+
+	userModel := models.NewUser()
+	respModel := userModel.FindUserByID(myCacheUserID.(uint))
+	if respModel.Status != message.SuccessStatus {
+		return respModel
+	}
+	respData := respModel.Data.(*models.User)
+	// 2.缓存中没有，从数据库中查询token，并且存储在缓存中token:
+	// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+	myData := &form.CurrentUserMsgResp{
+		UserID:   respData.ID,
+		Email:    respData.Email,
+		Username: respData.Username,
+		Nickname: respData.Nickname,
+		Avatar:   respData.Avatar,
+	}
+	resp.Data = myData
+	resp.Message = "用户信息查询成功"
+	return resp
+}
+
 // 用户登录成功用户时候生成token
 func generateTokenSaveToCacheToDB(userId uint) *message.CommonResponse {
 	u := uuid.New()
@@ -140,17 +186,6 @@ func generateTokenSaveToCacheToDB(userId uint) *message.CommonResponse {
 		Token:  userToken.Token,
 	}
 	return respModel
-}
-
-func CreateUser(data interface{}) message.CommonDealInfo {
-
-	u := models.NewUser()
-	dealInfo := u.CreateUser(data.(form.LoginMsgReq))
-	if dealInfo.Error != global.DealInfoSuccess {
-		return dealInfo
-	}
-	dealInfo.Data = u
-	return dealInfo
 }
 
 // 处理用户token相关逻辑

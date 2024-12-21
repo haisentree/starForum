@@ -61,3 +61,11 @@ type UserTokenMsgDealResp struct {
 	UserId uint
 	Token  string
 }
+
+type CurrentUserMsgResp struct {
+	UserID   uint   `json:"userID"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+}

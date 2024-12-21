@@ -28,7 +28,6 @@ func (s *StarForumServer) Start() {
 func (s *StarForumServer) createRouters() {
 	mvc.Configure(s.server.Party("/api"), func(m *mvc.Application) {
 		m.Party("/user").Handle(new(api.UserController))
-		m.Party("/login").Handle(new(api.LoginController))
 		m.Party("/captcha").Handle(new(api.CaptchaController))
 	})
 }
