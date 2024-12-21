@@ -6,6 +6,7 @@ import (
 	"github.com/patrickmn/go-cache"
 	"gorm.io/gorm"
 	"starForum/internal/global/config"
+	myemail "starForum/pkg/email"
 )
 
 var (
@@ -15,11 +16,13 @@ var (
 	Cache           *cache.Cache
 	CaptchaGenerate *base64Captcha.Captcha
 	CaptchaStore    = base64Captcha.DefaultMemStore
+	EmailSender     *myemail.EmailSender
 )
 
 var (
 	ConfigMysql config.Mysql
 	ConfigCache config.Cache
+	ConfigEmail config.Email
 )
 
 const (

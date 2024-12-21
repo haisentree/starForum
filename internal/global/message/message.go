@@ -4,21 +4,23 @@ import (
 	"github.com/kataras/iris/v12"
 )
 
-// 用于传递后端响应给前端的数据
+// =====================后端响应信息给前端的数据================================
 type CommonResponse struct {
-	Status  int16
+	Status  int32
 	Message string
 	Data    interface{}
 }
 
-func NewCommonResponse(d interface{}) *CommonResponse {
+// models -> service    service -> controller
+func NewCommonResponse() *CommonResponse {
 	return &CommonResponse{
-		Status:  200,
-		Message: "success",
-		Data:    d,
+		Status:  SuccessStatus,
+		Message: SucessMessage,
+		Data:    nil,
 	}
 }
 
+// controller -> web
 func (c *CommonResponse) JsonCommonResponse() iris.Map {
 	return iris.Map{
 		"status":  c.Status,

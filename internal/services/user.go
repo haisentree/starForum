@@ -1,17 +1,18 @@
 package services
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/patrickmn/go-cache"
-	"starForum/internal/global/cacheInfo"
+	"math/rand"
 	"starForum/internal/global/form"
 	"starForum/pkg/password"
+	"strings"
 	"time"
 
 	"starForum/internal/global"
 	"starForum/internal/global/message"
 	"starForum/internal/models"
-	"strings"
 )
 
 var UserService = newUserService()
@@ -23,24 +24,122 @@ func newUserService() *userService {
 type userService struct {
 }
 
-func SigupInfoDeal(data interface{}) message.CommonDealInfo {
-	res := message.NewCommonDealInfo(nil)
-
+func (u *userService) SigupInfoDeal(data interface{}) *message.CommonResponse {
+	resp := message.NewCommonResponse()
+	// 校验验证码
 	d := data.(form.SignupInfoMsgReq)
 	if global.CaptchaStore.Verify(d.CaptchaId, d.CaptchaAnswer, true) == false {
-		res.Error = global.DealServiceFail
-		res.Message = "验证码校验错误"
-		return res
+		resp.Status = message.ServiceError
+		resp.Message = "验证码校验错误"
+		return resp
 	}
 	d.Password = password.EncodePassword(d.Password)
 	// 判断邮件地址是否被注册过
 
 	// 发送验证码
+	randCode := fmt.Sprintf("%06v", rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(1000000))
+	global.EmailSender.SendSampleCode(randCode, d.Email)
+	// 将注册信息以email为key，存储在缓存中
+	myCache := form.SignupInfoMsgCache{
+		Email:     d.Email,
+		Username:  d.Username,
+		Password:  d.Password,
+		Nickname:  d.Nickname,
+		Avatar:    d.Avatar,
+		EmailCode: randCode,
+	}
+	global.Cache.Set(d.Email, myCache, 5*time.Minute)
 
-	// 存储再存储再缓存中
+	resp.Message = "注册信息提交成功,已发送邮件验证码。请尽快验证，有效期5分钟"
+	return resp
+}
 
-	res.Message = "注册信息提交成功,已发送邮件验证码，请尽快验证"
-	return res
+func (u *userService) SignupEmailVerify(data interface{}) *message.CommonResponse {
+	resp := message.NewCommonResponse()
+	d := data.(form.SigupEmailVerifyMsgReq)
+	// 从cache中校验验证码
+	item, _ := global.Cache.Get(d.Email)
+	userSigupCache := item.(form.SignupInfoMsgCache)
+	if userSigupCache.EmailCode != d.EmailCode {
+		resp.Status = message.ServiceError
+		resp.Message = "邮件验证码错误"
+		return resp
+	}
+	// 将注册信息存储在数据库中
+	userModel := models.NewUser()
+	userModel.Username = userSigupCache.Username
+	userModel.Email = userSigupCache.Email
+	userModel.Password = userSigupCache.Password
+	userModel.Nickname = userSigupCache.Nickname
+	userModel.Avatar = userSigupCache.Avatar
+
+	respModel := models.CreateUser2(userModel)
+	if respModel.Status != message.SuccessStatus {
+		resp.Status = message.ModelError
+		resp.Message = "创建用户失败"
+		return resp
+	}
+
+	resp.Message = "创建用户成功"
+	return resp
+}
+func (u *userService) UserLogin(data interface{}) *message.CommonResponse {
+	resp := message.NewCommonResponse()
+	d := data.(form.UserLoginMsgReq)
+	// 通过查询email从数据库中获取信息
+	userModel := models.NewUser()
+	respModel := userModel.FindUserByEmail(d.Email)
+	if respModel.Status != message.SuccessStatus {
+		return respModel
+	}
+	userData := respModel.Data.(*models.User)
+	myUserResp := &form.UserLoginMsgResp{
+		UserId:   userData.ID,
+		Email:    userData.Email,
+		Username: userData.Username,
+		Nickname: userData.Nickname,
+		Avatar:   userData.Avatar,
+		Token:    "",
+	}
+	// 生成token,并且存储在缓存中，还要存储在数据库中，以token:userID的形式
+	respDeal := generateTokenSaveToCacheToDB(myUserResp.UserId)
+	if respDeal.Status != message.SuccessStatus {
+		resp.Status = message.ServiceError
+		return respDeal
+	}
+	myUserResp.Token = respDeal.Data.(form.UserTokenMsgDealResp).Token
+
+	resp.Message = "token创建成功，用户登录成功"
+	resp.Data = myUserResp
+	return resp
+}
+
+// 用户登录成功用户时候生成token
+func generateTokenSaveToCacheToDB(userId uint) *message.CommonResponse {
+	u := uuid.New()
+	t := time.Now()
+	addTime := time.Duration(global.ConfigCache.ExpireTime) * time.Hour
+	expireTime := t.Add(addTime)
+
+	userToken := form.UserTokenMsgDealReq{}
+	userToken.Token = strings.ReplaceAll(u.String(), "-", "")
+	userToken.UserId = userId
+	userToken.ExpireTime = expireTime.Unix()
+
+	// 数据库中创建token
+	m := models.NewUserToken()
+	respModel := m.CreateUserToken(userToken)
+	if respModel.Status != message.SuccessStatus {
+		return respModel
+	}
+	// 存储token在缓存中
+	global.Cache.Set(userToken.Token, userToken.UserId, cache.DefaultExpiration)
+
+	respModel.Data = form.UserTokenMsgDealResp{
+		UserId: userId,
+		Token:  userToken.Token,
+	}
+	return respModel
 }
 
 func CreateUser(data interface{}) message.CommonDealInfo {
@@ -55,34 +154,6 @@ func CreateUser(data interface{}) message.CommonDealInfo {
 }
 
 // 处理用户token相关逻辑
-
-// 用户登录和注册成功用户时候生成token
-func generateToken(data interface{}) message.CommonDealInfo {
-	u := uuid.New()
-	strings.ReplaceAll(u.String(), "-", "")
-	t := time.Now()
-	addTime := time.Duration(global.ConfigCache.ExpireTime) * time.Hour
-	expireTime := t.Add(addTime)
-
-	userToken := form.UserTokenMsgDeal{}
-	userToken.Token = u.String()
-	userToken.UserId = data.(form.UserTokenMsgReq).UserId
-	userToken.ExpireTime = expireTime.Unix()
-
-	m := models.NewUserToken()
-	dealInfo := m.CreateUsertoken(userToken)
-	if dealInfo.Error != global.DealInfoSuccess {
-		dealInfo.Message = "service创建token失败"
-		return dealInfo
-	}
-	// 存储token在缓存中
-	global.Cache.Set("foo", cacheInfo.UserCache{
-		UserName: "test",
-	}, cache.DefaultExpiration)
-
-	dealInfo.Data = userToken
-	return dealInfo
-}
 
 // 通过token查询用户信息,收先通过缓存查取，没有去查询数据库并且进行缓存
 func getByToken() {

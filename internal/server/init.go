@@ -12,6 +12,7 @@ import (
 	"starForum/internal/global"
 	"starForum/internal/global/config"
 	"starForum/internal/models"
+	myemail "starForum/pkg/email"
 	"time"
 )
 
@@ -21,6 +22,7 @@ func init() {
 	initValidate()
 	initCache()
 	initCaptcha()
+	initEmail()
 }
 
 func initConfig() {
@@ -34,6 +36,7 @@ func initConfig() {
 	}
 	global.ConfigMysql = config.Mysql
 	global.ConfigCache = config.Cache
+	global.ConfigEmail = config.Email
 }
 
 func initDB() {
@@ -79,4 +82,19 @@ func initCaptcha() {
 		DotCount: 1,   //背景的点数，越大，字体越模糊
 	}
 	global.CaptchaGenerate = base64Captcha.NewCaptcha(&digitDriver, global.CaptchaStore)
+}
+
+func initEmail() {
+	Subject := "验证码发送"
+	e := myemail.NewEmailSender(
+		global.ConfigEmail.Sender,
+		Subject,
+		global.ConfigEmail.Username,
+		global.ConfigEmail.Password,
+		global.ConfigEmail.Host,
+		global.ConfigEmail.Port,
+		global.ConfigEmail.TLS,
+	)
+
+	global.EmailSender = e
 }

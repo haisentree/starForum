@@ -17,11 +17,36 @@ type User struct {
 }
 
 func NewUser() *User {
-	m := &User{}
-	return m
+	return &User{}
 }
 func (m *User) TableName() string {
 	return "user"
+}
+
+func CreateUser2(data *User) *message.CommonResponse {
+	resp := message.NewCommonResponse()
+	result := global.MysqlDB.Create(data)
+	if result.Error != nil {
+		resp.Status = message.ModelError
+		resp.Message = result.Error.Error()
+		return resp
+	}
+	return resp
+}
+
+func (m *User) FindUserByEmail(email string) *message.CommonResponse {
+	respModel := message.NewCommonResponse()
+	user := &User{
+		Email: email,
+	}
+	result := global.MysqlDB.First(&user)
+	if result.RowsAffected == 0 {
+		respModel.Status = message.ModelFindNone
+		respModel.Message = "数据不存在数据库中"
+		return respModel
+	}
+	respModel.Data = user
+	return respModel
 }
 
 func (m *User) CreateUser(data interface{}) message.CommonDealInfo {
@@ -42,43 +67,3 @@ func (m *User) CreateUser(data interface{}) message.CommonDealInfo {
 	}
 	return dealInfo
 }
-
-// ========================================UserToken========================================
-type UserToken struct {
-	gorm.Model
-	Token       string `gorm:"size:32;unique;not null" json:"token"`
-	UserId      uint   `gorm:"not null;index:idx_user_token_user_id;" json:"userId"`
-	ExpiredTime int64  `gorm:"not null" json:"expiredTime"`
-	Status      uint8  `gorm:"not null;index:idx_user_token_status" json:"status"`
-}
-
-func NewUserToken() *UserToken {
-	m := &UserToken{}
-	return m
-}
-
-func (m *UserToken) TableName() string {
-	return "user_token"
-}
-
-func (m *UserToken) CreateUsertoken(data interface{}) message.CommonDealInfo {
-	dealInfo := message.NewCommonDealInfo(nil)
-	d := data.(form.UserTokenMsgDeal)
-	userToken := &UserToken{
-		Token:       d.Token,
-		UserId:      d.UserId,
-		ExpiredTime: d.ExpireTime,
-		Status:      0,
-	}
-
-	result := global.MysqlDB.Create(userToken)
-	if result.Error != nil {
-		dealInfo.Error = global.DealModelFail
-		dealInfo.Message = result.Error.Error()
-		return dealInfo
-	}
-
-	return dealInfo
-}
-
-// 从数据库中查询userToke的Status时候，需要对比过期时间

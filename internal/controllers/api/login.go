@@ -14,7 +14,7 @@ type LoginController struct {
 
 // 注册
 func (c *LoginController) PostSignup() {
-	resp := msg.NewCommonResponse(nil)
+	resp := msg.NewCommonResponse()
 	// 1.校验表单
 	req := form.LoginMsgReq{}
 	c.Ctx.ReadJSON(&req)

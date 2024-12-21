@@ -16,7 +16,8 @@ func (c *CaptchaController) GetGenerate() {
 	body := map[string]interface{}{"captchaId": id, "captchaBase64": bs64}
 	if err != nil {
 	}
-	resp := msg.NewCommonResponse(body)
+	resp := msg.NewCommonResponse()
+	resp.Data = body
 	c.Ctx.JSON(resp.JsonCommonResponse())
 }
 
@@ -27,7 +28,7 @@ type captchaReq struct {
 
 // 这个接口在实际中不会使用
 func (c *CaptchaController) PostVerify() {
-	resp := msg.NewCommonResponse(nil)
+	resp := msg.NewCommonResponse()
 
 	req := captchaReq{}
 	c.Ctx.ReadJSON(&req)
