@@ -56,6 +56,7 @@ func (c *UserController) PostSigupEmailVerify() {
 		resp.Status = respService.Status
 		resp.Message = respService.Message
 		c.Ctx.JSON(resp.JsonCommonResponse())
+		return
 	}
 	// 返回token
 	c.Ctx.JSON(respService.JsonCommonResponse())

@@ -10,6 +10,8 @@ type CaptchaController struct {
 	Ctx iris.Context
 }
 
+// 没有访问次数限制，把该接口点爆，内存会上升
+
 func (c *CaptchaController) GetGenerate() {
 	//captcha := base64Captcha.NewCaptcha(&digitDriver, store)
 	id, bs64, _, err := global.CaptchaGenerate.Generate()

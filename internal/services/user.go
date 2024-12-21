@@ -36,6 +36,8 @@ func (u *userService) SigupInfoDeal(data interface{}) *message.CommonResponse {
 			resp.Message = "验证码校验错误"
 			return resp
 		}
+	} else {
+		fmt.Println("Debug模式，跳过图片验证码验证阶段")
 	}
 
 	d.Password = password.EncodePassword(d.Password)
@@ -48,7 +50,13 @@ func (u *userService) SigupInfoDeal(data interface{}) *message.CommonResponse {
 		resp.Status = message.ServiceError
 		resp.Message = "注册失败，该邮件已经被注册"
 		return resp
-
+	}
+	// 判断用户名是否被使用
+	respModeName := userModel.FindUserByName(d.Username)
+	if respModeName.Status != message.ModelFindNone {
+		resp.Status = message.ServiceError
+		resp.Message = "注册失败，该用户名已经被使用"
+		return resp
 	}
 	// 发送验证码
 	randCode := fmt.Sprintf("%06v", rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(1000000))
@@ -72,13 +80,25 @@ func (u *userService) SignupEmailVerify(data interface{}) *message.CommonRespons
 	resp := message.NewCommonResponse()
 	d := data.(form.SigupEmailVerifyMsgReq)
 	// 从cache中校验验证码
-	item, _ := global.Cache.Get(d.Email)
-	userSigupCache := item.(form.SignupInfoMsgCache)
-	if userSigupCache.EmailCode != d.EmailCode {
+	item, ok := global.Cache.Get(d.Email)
+	if ok == false {
 		resp.Status = message.ServiceError
-		resp.Message = "邮件验证码错误"
+		resp.Message = "邮件不在缓存中,请重新发送验证码"
 		return resp
 	}
+	userSigupCache := item.(form.SignupInfoMsgCache)
+
+	// 调试模式下邮件验证码错误，也可以通过
+	if global.ConfigServer.Debug != true {
+		if userSigupCache.EmailCode != d.EmailCode {
+			resp.Status = message.ServiceError
+			resp.Message = "邮件验证码错误"
+			return resp
+		}
+	} else {
+		fmt.Println("Debug模式，跳过email验证码验证阶段")
+	}
+	
 	// 将注册信息存储在数据库中
 	userModel := models.NewUser()
 	userModel.Username = userSigupCache.Username

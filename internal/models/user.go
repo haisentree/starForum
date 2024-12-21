@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"gorm.io/gorm"
 	"starForum/internal/global"
 	"starForum/internal/global/message"
@@ -37,21 +36,30 @@ func CreateUser(data *User) *message.CommonResponse {
 func (m *User) FindUserByEmail(email string) *message.CommonResponse {
 	respModel := message.NewCommonResponse()
 	user := NewUser()
-	user.Username = email
 
-	fmt.Println("model:", email)
-
-	result := global.MysqlDB.First(&user)
+	result := global.MysqlDB.Where("email = ?", email).First(&user)
 	if result.RowsAffected == 0 {
 		respModel.Status = message.ModelFindNone
 		respModel.Message = "数据不存在数据库中"
 		return respModel
 	}
-
-	fmt.Println("result:", result.RowsAffected)
 	respModel.Data = user
 	return respModel
 }
+func (m *User) FindUserByName(username string) *message.CommonResponse {
+	respModel := message.NewCommonResponse()
+	user := NewUser()
+
+	result := global.MysqlDB.Where("username = ?", username).First(&user)
+	if result.RowsAffected == 0 {
+		respModel.Status = message.ModelFindNone
+		respModel.Message = "数据不存在数据库中"
+		return respModel
+	}
+	respModel.Data = user
+	return respModel
+}
+
 func (m *User) FindUserByID(userId uint) *message.CommonResponse {
 	respModel := message.NewCommonResponse()
 	user := NewUser()
